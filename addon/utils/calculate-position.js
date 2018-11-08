@@ -37,7 +37,11 @@ export function calculateWormholedPosition(trigger, content, destination, { hori
   let anchorElement = destination.parentNode;
   let anchorPosition = window.getComputedStyle(anchorElement).position;
   while (anchorPosition !== 'relative' && anchorPosition !== 'absolute' && anchorElement.tagName.toUpperCase() !== 'BODY') {
-    anchorElement = anchorElement.parentNode;
+    // anchorElement.parentElement should be equivalent to anchorElement.parentNode until we reach nodes attached to the shadow root. For those nodes:
+    // - anchorElement.parentElement will be null
+    // - anchorElement.parentNode will be a reference to the shadow root
+    // - anchorElement.parentNode.host will be a reference to the shadow host
+    anchorElement = anchorElement.parentElement || anchorElement.parentNode && anchorElement.parentNode.host;
     anchorPosition = window.getComputedStyle(anchorElement).position;
   }
   if (anchorPosition === 'relative' || anchorPosition === 'absolute') {

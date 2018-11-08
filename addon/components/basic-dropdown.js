@@ -53,6 +53,11 @@ export default Component.extend({
   height: null,
   otherStyles: {}, // eslint-disable-line
 
+  // This node-reference will be used to run .querySelector/etc. lookups against.
+  // Previously, most lookups were run against the document, but some of our targets may be behind a shadow boundary.
+  // This may be overridden to refer to a high-level node within a shadow tree.
+  rootElement: document,
+
   // Lifecycle hooks
   init() {
     if (this.get('renderInPlace') && this.get('tagName') === '') {
@@ -158,7 +163,10 @@ export default Component.extend({
     if (skipFocus) {
       return;
     }
-    let trigger = document.querySelector(`[data-ebd-id=${publicAPI.uniqueId}-trigger]`);
+
+    // Substituting rootElement for document.
+    const rootElement = this.get('rootElement');
+    let trigger = rootElement.querySelector(`[data-ebd-id=${publicAPI.uniqueId}-trigger]`);
     if (trigger && trigger.tabIndex > -1) {
       trigger.focus();
     }
@@ -177,8 +185,11 @@ export default Component.extend({
     if (!publicAPI.isOpen) {
       return;
     }
-    let dropdownElement = document.getElementById(this.dropdownId);
-    let triggerElement = document.querySelector(`[data-ebd-id=${publicAPI.uniqueId}-trigger]`);
+
+    // Substituting rootElement for document.
+    const rootElement = this.get('rootElement');
+    let dropdownElement = rootElement.querySelector(`[id^=${this.dropdownId}]`);
+    let triggerElement = rootElement.querySelector(`[data-ebd-id=${publicAPI.uniqueId}-trigger]`);
     if (!dropdownElement || !triggerElement) {
       return;
     }

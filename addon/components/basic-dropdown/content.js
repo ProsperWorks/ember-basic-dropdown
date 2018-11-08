@@ -40,12 +40,14 @@ function waitForAnimations(element, callback) {
  * @param {HTMLElement} el
  * @param {String} dropdownId
  */
-function dropdownIsValidParent(el, dropdownId) {
+// Added rootElement arg.
+function dropdownIsValidParent(el, dropdownId, rootElement) {
   let closestDropdown = closestContent(el);
   if (closestDropdown) {
-    let trigger = document.querySelector(`[aria-owns=${closestDropdown.attributes.id.value}]`);
+    // Substituted rootElement for document
+    let trigger = rootElement.querySelector(`[aria-owns=${closestDropdown.attributes.id.value}]`);
     let parentDropdown = closestContent(trigger);
-    return parentDropdown && parentDropdown.attributes.id.value === dropdownId || dropdownIsValidParent(parentDropdown, dropdownId);
+    return parentDropdown && parentDropdown.attributes.id.value === dropdownId || dropdownIsValidParent(parentDropdown, dropdownId, rootElement);
   } else {
     return false;
   }
@@ -60,6 +62,9 @@ export default Component.extend({
   transitioningInClass: 'ember-basic-dropdown--transitioning-in',
   transitionedInClass: 'ember-basic-dropdown--transitioned-in',
   transitioningOutClass: 'ember-basic-dropdown--transitioning-out',
+
+  // See basic-dropdown.js for more info.
+  rootElement: document,
 
   // CPs
   _contentTagName: fallbackIfUndefined('div'),
@@ -144,8 +149,12 @@ export default Component.extend({
   // Methods
   open() {
     let dropdown = this.get('dropdown');
-    this.triggerElement = this.triggerElement || document.querySelector(`[data-ebd-id=${dropdown.uniqueId}-trigger]`);
-    this.dropdownElement = document.getElementById(this.dropdownId);
+
+    // Substituting rootElement for document.
+    const rootElement = this.get('rootElement');
+    this.triggerElement = this.triggerElement || rootElement.querySelector(`[data-ebd-id=${dropdown.uniqueId}-trigger]`);
+    this.dropdownElement = rootElement.querySelector(`div[id^=${this.dropdownId}]`);
+
     document.addEventListener('mousedown', this.handleRootMouseDown, true);
     if (this.get('isTouchDevice')) {
       document.addEventListener('touchstart', this.touchStartHandler, true);
@@ -195,12 +204,17 @@ export default Component.extend({
 
   // Methods
   handleRootMouseDown(e) {
-    if (this.hasMoved || this.dropdownElement.contains(e.target) || this.triggerElement && this.triggerElement.contains(e.target)) {
+    // Under most conditions, e.composedPath()[0] will be equivalent to e.target. They will differ when:
+    // - the event "e" originated from within a shadow tree and has bubbled outside of it (e.target be a reference to the shadow host)
+    // - e.composedPath is not supported
+    const target = e.composedPath && e.composedPath()[0] || e.target;
+    if (this.hasMoved || this.dropdownElement.contains(target) || this.triggerElement && this.triggerElement.contains(target)) {
       this.hasMoved = false;
       return;
     }
 
-    if (dropdownIsValidParent(e.target, this.dropdownId)) {
+    // Now passing rootElement.
+    if (dropdownIsValidParent(target, this.dropdownId, this.get('rootElement'))) {
       this.hasMoved = false;
       return;
     }
@@ -318,6 +332,7 @@ export default Component.extend({
   },
 
   addScrollHandling() {
+    // AW - The "preventScroll" option probably won't work without some adjustments first.
     if (this.get('preventScroll') === true) {
       this.addPreventScrollEvent();
       this.removeScrollHandling = this.removePreventScrollEvent;
